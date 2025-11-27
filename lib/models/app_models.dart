@@ -186,3 +186,71 @@ class SupportRequest {
     required this.createdAt,
   });
 }
+
+class Category {
+  String id;
+  String name;
+  String image;
+
+  Category({required this.id, required this.name, this.image = ''});
+}
+
+class Product {
+  String id;
+  String categoryId;
+  String name;
+  double price;
+  String imageUrl;
+  int stockQuantity; // Tồn kho tổng
+  String type; // 'part' (phụ tùng) hoặc 'service' (nhưng kho chỉ quan tâm part)
+
+  Product({
+    required this.id,
+    required this.categoryId,
+    required this.name,
+    required this.price,
+    required this.imageUrl,
+    required this.stockQuantity,
+    this.type = 'part',
+  });
+}
+
+class Inventory {
+  String id;
+  String productId;
+  Product? product; // Populate từ product_id
+  int quantityAvailable;
+  DateTime lastUpdated;
+
+  Inventory({
+    required this.id,
+    required this.productId,
+    this.product,
+    required this.quantityAvailable,
+    required this.lastUpdated,
+  });
+}
+
+class StockTransaction {
+  String id;
+  String productId;
+  String productName; // Display helper (do API populate)
+  String productImage; // Display helper
+  int quantity;
+  String type; // 'inbound' (nhập), 'outbound' (xuất)
+  String note;
+  String createdBy;
+  DateTime createdAt;
+
+  StockTransaction({
+    required this.id,
+    required this.productId,
+    required this.productName,
+    required this.productImage,
+    required this.quantity,
+    required this.type,
+    required this.note,
+    required this.createdBy,
+    required this.createdAt,
+  });
+}

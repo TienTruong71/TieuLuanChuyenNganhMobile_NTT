@@ -315,4 +315,142 @@ class MockData {
     }
   }
 
+  List<Category> categories = [
+    Category(id: 'cat1', name: 'Lốp xe'),
+    Category(id: 'cat2', name: 'Dầu nhớt'),
+    Category(id: 'cat3', name: 'Phụ tùng máy'),
+  ];
+
+  // Danh sách tất cả sản phẩm (Product Catalog)
+  List<Product> products = [
+    Product(id: 'p1', categoryId: 'cat1', name: 'Lốp Michelin Primacy 4', price: 2500000, stockQuantity: 10, imageUrl: 'https://via.placeholder.com/150', type: 'part'),
+    Product(id: 'p2', categoryId: 'cat2', name: 'Nhớt Castrol Edge 5W-30', price: 450000, stockQuantity: 50, imageUrl: 'https://via.placeholder.com/150', type: 'part'),
+    Product(id: 'p3', categoryId: 'cat3', name: 'Má phanh Brembo', price: 1200000, stockQuantity: 5, imageUrl: 'https://via.placeholder.com/150', type: 'part'),
+    Product(id: 'p4', categoryId: 'cat1', name: 'Lốp Bridgestone (Mới)', price: 2100000, stockQuantity: 0, imageUrl: 'https://via.placeholder.com/150', type: 'part'), // Chưa có trong kho
+  ];
+
+  // Danh sách Inventory (Những sp thực tế đang quản lý trong kho)
+  List<Inventory> inventories = [
+    Inventory(id: 'inv1', productId: 'p1', quantityAvailable: 10, lastUpdated: DateTime.now()),
+    Inventory(id: 'inv2', productId: 'p2', quantityAvailable: 50, lastUpdated: DateTime.now()),
+    Inventory(id: 'inv3', productId: 'p3', quantityAvailable: 5, lastUpdated: DateTime.now()),
+  ];
+
+  List<StockTransaction> transactions = [];
+
+  // --- INVENTORY METHODS ---
+
+  // GET /api/inventory
+  Future<List<Inventory>> getInventoryList() async {
+    await Future.delayed(Duration(milliseconds: 500));
+    // Fake Populate
+    for (var inv in inventories) {
+      try {
+        inv.product = products.firstWhere((p) => p.id == inv.productId);
+        // Đồng bộ số lượng hiển thị (logic thực tế là inventory sync sang product)
+        inv.product!.stockQuantity = inv.quantityAvailable;
+      } catch (e) {}
+    }
+    return inventories;
+  }
+
+  // POST /api/inventory (Thêm sản phẩm mới vào quản lý kho)
+  Future<void> addInventory(String productId, int initialQty) async {
+    await Future.delayed(Duration(seconds: 1));
+    if (inventories.any((inv) => inv.productId == productId)) {
+      throw Exception("Sản phẩm đã có trong kho!");
+    }
+
+    // Logic Backend: Create Inventory & Update Product Stock
+    final newInv = Inventory(
+        id: DateTime.now().toString(),
+        productId: productId,
+        quantityAvailable: initialQty,
+        lastUpdated: DateTime.now()
+    );
+    inventories.add(newInv);
+
+    final prod = products.firstWhere((p) => p.id == productId);
+    prod.stockQuantity = initialQty;
+  }
+
+  // PUT /api/inventory/:id (Cập nhật số lượng thủ công - Kiểm kê)
+  Future<void> updateInventory(String invId, int newQty) async {
+    await Future.delayed(Duration(milliseconds: 500));
+    final index = inventories.indexWhere((inv) => inv.id == invId);
+    if (index == -1) throw Exception("Không tìm thấy");
+
+    inventories[index].quantityAvailable = newQty;
+    inventories[index].lastUpdated = DateTime.now();
+
+    // Sync Product
+    final prodIndex = products.indexWhere((p) => p.id == inventories[index].productId);
+    if(prodIndex != -1) products[prodIndex].stockQuantity = newQty;
+  }
+
+  // --- STOCK TRANSACTION METHODS ---
+
+  // POST /api/stock (Nhập/Xuất kho)
+  Future<void> createStockTransaction(String productId, int quantity, String type, String note) async {
+    await Future.delayed(Duration(seconds: 1));
+
+    // 1. Validate
+    final invIndex = inventories.indexWhere((inv) => inv.productId == productId);
+    if (invIndex == -1) throw Exception("Sản phẩm chưa được quản lý trong kho. Vui lòng thêm vào kho trước.");
+
+    final inv = inventories[invIndex];
+    if (type == 'outbound' && quantity > inv.quantityAvailable) {
+      throw Exception("Số lượng xuất vượt quá tồn kho hiện tại (${inv.quantityAvailable})");
+    }
+
+    // 2. Update Stock
+    if (type == 'inbound') {
+      inv.quantityAvailable += quantity;
+    } else {
+      inv.quantityAvailable -= quantity;
+    }
+    inv.lastUpdated = DateTime.now();
+
+    // 3. Sync Product
+    final prod = products.firstWhere((p) => p.id == productId);
+    prod.stockQuantity = inv.quantityAvailable;
+
+    // 4. Log Transaction
+    transactions.insert(0, StockTransaction(
+      id: DateTime.now().toString(),
+      productId: productId,
+      productName: prod.name,
+      productImage: prod.imageUrl,
+      quantity: quantity,
+      type: type,
+      note: note,
+      createdBy: currentUser?.fullName ?? 'Unknown',
+      createdAt: DateTime.now(),
+    ));
+  }
+
+  // GET /api/stock
+  Future<List<StockTransaction>> getStockTransactions() async {
+    await Future.delayed(Duration(milliseconds: 500));
+    return transactions;
+  }
+
+  // Helper: Lấy danh sách sản phẩm chưa có trong kho (để thêm mới)
+  Future<List<Product>> getProductsNotInInventory() async {
+    final existingIds = inventories.map((i) => i.productId).toList();
+    return products.where((p) => !existingIds.contains(p.id)).toList();
+  }
+
+  // Helper: Lấy list sản phẩm đang có trong kho (để nhập/xuất)
+  Future<List<Product>> getProductsInInventory() async {
+    // Fake populate
+    List<Product> list = [];
+    for(var inv in inventories) {
+      var p = products.firstWhere((p) => p.id == inv.productId);
+      p.stockQuantity = inv.quantityAvailable;
+      list.add(p);
+    }
+    return list;
+  }
+
 }

@@ -106,7 +106,6 @@ class _ServiceBayTabState extends State<ServiceBayTab> {
                   ),
                 )
             ] else ...[
-              // Dropdown đổi trạng thái (Available <-> Maintenance)
               DropdownButtonFormField<String>(
                 value: _tempStatus,
                 decoration: InputDecoration(labelText: "Trạng thái", border: OutlineInputBorder()),
@@ -196,9 +195,10 @@ class _ServiceBayTabState extends State<ServiceBayTab> {
                       boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                     ),
                     child: Stack(
+                      alignment: Alignment.center, // <--- SỬA LỖI Ở ĐÂY: Căn giữa toàn bộ nội dung trong Stack
                       children: [
 
-                        // --- PHẦN ĐÃ SỬA: Icon Bánh răng được bọc trong InkWell/Material để bắt sự kiện tap riêng ---
+                        // Nút Settings (Đã sửa InkWell)
                         Positioned(
                           right: 0,
                           top: 0,
@@ -207,36 +207,41 @@ class _ServiceBayTabState extends State<ServiceBayTab> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
                               onTap: () {
-                                // QUAN TRỌNG: Nhấn vào bánh răng -> Luôn mở cấu hình
                                 _showManageBayDialog(bay);
                               },
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0), // Tăng diện tích bấm
+                                padding: const EdgeInsets.all(8.0),
                                 child: Icon(Icons.settings, size: 22, color: Colors.grey[600]),
                               ),
                             ),
                           ),
                         ),
-                        // -----------------------------------------------------------------------------------------
 
-                        Padding(padding: const EdgeInsets.all(12.0), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(isAvailable ? Icons.add_circle_outline : (isMaintenance ? Icons.build : (isJobDone ? Icons.check_circle : Icons.directions_car)), size: 32, color: isAvailable ? Colors.green : (isMaintenance ? Colors.orange : (isJobDone ? Colors.green : Colors.blue[800]))),
-                          SizedBox(height: 8),
-                          Text(bay.bayNumber, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Divider(height: 12),
-                          if (isOccupied) ...[
-                            Text(bay.bookingUserName ?? "Khách", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            SizedBox(height: 2),
-                            Text(bay.bookingServiceName ?? "Dịch vụ", style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            SizedBox(height: 4),
-                            Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: isJobDone ? Colors.green : Colors.blue[100], borderRadius: BorderRadius.circular(4)), child: Text(isJobDone ? "CHỜ GIAO XE" : "ĐANG SỬA", style: TextStyle(fontSize: 10, color: isJobDone ? Colors.white : Colors.blue[900], fontWeight: FontWeight.bold)))
-                          ] else if (isMaintenance) ...[
-                            Text("Đang bảo trì", style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold)),
-                          ] else ...[
-                            Text("Trống", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                            Text("Chạm để nhận xe", style: TextStyle(fontSize: 10, color: Colors.grey))
-                          ]
-                        ])),
+                        // Nội dung chính
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center, // Căn giữa dọc
+                            children: [
+                              Icon(isAvailable ? Icons.add_circle_outline : (isMaintenance ? Icons.build : (isJobDone ? Icons.check_circle : Icons.directions_car)), size: 32, color: isAvailable ? Colors.green : (isMaintenance ? Colors.orange : (isJobDone ? Colors.green : Colors.blue[800]))),
+                              SizedBox(height: 8),
+                              Text(bay.bayNumber, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Divider(height: 12),
+                              if (isOccupied) ...[
+                                Text(bay.bookingUserName ?? "Khách", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                SizedBox(height: 2),
+                                Text(bay.bookingServiceName ?? "Dịch vụ", style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                SizedBox(height: 4),
+                                Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: isJobDone ? Colors.green : Colors.blue[100], borderRadius: BorderRadius.circular(4)), child: Text(isJobDone ? "CHỜ GIAO XE" : "ĐANG SỬA", style: TextStyle(fontSize: 10, color: isJobDone ? Colors.white : Colors.blue[900], fontWeight: FontWeight.bold)))
+                              ] else if (isMaintenance) ...[
+                                Text("Đang bảo trì", style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold)),
+                              ] else ...[
+                                Text("Trống", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                Text("Chạm để nhận xe", style: TextStyle(fontSize: 10, color: Colors.grey))
+                              ]
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

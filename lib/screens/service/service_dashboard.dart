@@ -11,50 +11,33 @@ class ServiceDashboard extends StatefulWidget {
 
 class _ServiceDashboardState extends State<ServiceDashboard> {
   int _currentIndex = 0;
-
-  final List<Widget> _tabs = [
-    AppointmentTab(),
-    ServiceBayTab(),
-    RepairProgressTab(),
-  ];
-
-  final List<String> _titles = [
-    "Lịch Hẹn & Tiếp Nhận",
-    "Khu Vực Sửa Chữa",
-    "Tiến Độ Công Việc"
-  ];
+  final List<Widget> _tabs = [AppointmentTab(), ServiceBayTab(), RepairProgressTab()];
+  final List<String> _titles = ["Lịch hẹn", "Khoang xe", "Tiến độ"];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
-        backgroundColor: Colors.blue[800],
-        foregroundColor: Colors.white,
         actions: [
-          IconButton(onPressed: () {}, icon: Icon(Icons.notifications)),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileScreen()));
-            },
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Colors.blue[800]),
+          IconButton(onPressed: () {}, icon: Icon(Icons.notifications_none_rounded)),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileScreen())),
+              child: CircleAvatar(radius: 16, backgroundColor: Colors.blue[100], child: Icon(Icons.person, size: 20, color: Colors.blue[800])),
             ),
           ),
-          SizedBox(width: 10),
         ],
       ),
       body: _tabs[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: Colors.blue[800],
-        unselectedItemColor: Colors.grey,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Lịch hẹn"),
-          BottomNavigationBarItem(icon: Icon(Icons.garage), label: "Khoang xe"),
-          BottomNavigationBarItem(icon: Icon(Icons.build_circle), label: "Tiến độ"),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        destinations: [
+          NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_month), label: 'Lịch hẹn'),
+          NavigationDestination(icon: Icon(Icons.garage_outlined), selectedIcon: Icon(Icons.garage), label: 'Khoang xe'),
+          NavigationDestination(icon: Icon(Icons.timelapse_outlined), selectedIcon: Icon(Icons.timelapse), label: 'Tiến độ'),
         ],
       ),
     );
