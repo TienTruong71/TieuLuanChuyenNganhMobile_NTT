@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../data/mock_data.dart';
+import '../../data/repository.dart'; // Đổi từ mock_data sang repository
 import '../service/service_dashboard.dart';
 import '../inventory/inventory_dashboard.dart';
 import '../sale/sale_dashboard.dart';
@@ -14,27 +14,51 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passController = TextEditingController();
   bool _isLoading = false;
 
+  // Hàm điền nhanh thông tin để test (Dev Mode)
   void _fillCredentials(String email) {
     _emailController.text = email;
-    _passController.text = "123456";
+    _passController.text = "123456"; // Mật khẩu mặc định khi test
   }
 
   void _handleLogin() async {
+    // Validate cơ bản
+    if (_emailController.text.isEmpty || _passController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Vui lòng nhập Email và Mật khẩu"), backgroundColor: Colors.orange)
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
+
     try {
-      final user = await MockData().login(_emailController.text, _passController.text);
+      // GỌI API LOGIN THÔNG QUA REPOSITORY
+      final user = await Repository().login(_emailController.text, _passController.text);
+
+      if (!mounted) return;
+
       Widget nextScreen;
       switch (user.roleName) {
         case 'service': nextScreen = ServiceDashboard(); break;
         case 'inventory': nextScreen = InventoryDashboard(); break;
         case 'sale': nextScreen = SaleDashboard(); break;
-        default: throw Exception("Role không hợp lệ");
+        default: throw Exception("Role '${user.roleName}' không hợp lệ hoặc không có quyền truy cập app này.");
       }
+
+      // Chuyển màn hình và xóa stack login để không back lại được
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => nextScreen));
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      if (mounted) {
+        // Hiển thị lỗi từ API (VD: Sai mật khẩu, Lỗi mạng)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red)
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -62,19 +86,30 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 40),
 
               // Input Area
-              TextField(controller: _emailController, decoration: InputDecoration(labelText: "Email đăng nhập", prefixIcon: Icon(Icons.email_outlined))),
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: "Email đăng nhập", prefixIcon: Icon(Icons.email_outlined)),
+                keyboardType: TextInputType.emailAddress,
+              ),
               SizedBox(height: 16),
-              TextField(controller: _passController, obscureText: true, decoration: InputDecoration(labelText: "Mật khẩu", prefixIcon: Icon(Icons.lock_outline))),
+              TextField(
+                  controller: _passController,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: "Mật khẩu", prefixIcon: Icon(Icons.lock_outline))
+              ),
               SizedBox(height: 24),
 
               // Button
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,
-                child: _isLoading ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text("ĐĂNG NHẬP"),
+                child: _isLoading
+                    ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text("ĐĂNG NHẬP"),
               ),
 
               Spacer(),
               // Quick Login Tools (Dev Mode - Subtle Design)
+              // Bạn có thể xóa phần này khi release production
               Text("Dev Quick Access:", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -1,7 +1,6 @@
-// lib/screens/inventory/stock_transaction_tab.dart
 import 'package:flutter/material.dart';
-import '../../data/mock_data.dart';
-import '../../models/app_models.dart';
+import '../../data/repository.dart'; // Sử dụng Repository (API thật)
+import '../../models/index.dart';    // Sử dụng index models
 
 class StockTransactionTab extends StatefulWidget {
   @override
@@ -15,6 +14,7 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
   final _noteCtrl = TextEditingController();
 
   List<Product> _availableProducts = [];
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -22,12 +22,23 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
     _loadProducts();
   }
 
+  // Tải danh sách sản phẩm từ API
   void _loadProducts() async {
-    final list = await MockData().getProductsInInventory();
-    setState(() { _availableProducts = list; });
+    try {
+      final list = await Repository().getProductsInInventory();
+      if (mounted) {
+        setState(() {
+          _availableProducts = list;
+        });
+      }
+    } catch (e) {
+      // Xử lý lỗi tải sản phẩm (im lặng hoặc log)
+      print("Lỗi tải sản phẩm: $e");
+    }
   }
 
   void _submitTransaction() async {
+    // 1. Validate
     if (_selectedProduct == null || _qtyCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Vui lòng nhập đủ thông tin")));
       return;
@@ -39,77 +50,92 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
       return;
     }
 
+    setState(() => isLoading = true);
+
+    // 2. Gọi API
     try {
-      await MockData().createStockTransaction(
+      await Repository().createStockTransaction(
           _selectedProduct!.id,
           qty,
           _transactionType,
           _noteCtrl.text
       );
 
-      // Reset form
+      // 3. Thành công -> Reset Form
       setState(() {
         _qtyCtrl.clear();
         _noteCtrl.clear();
         _selectedProduct = null;
+        isLoading = false;
       });
+
       _loadProducts(); // Reload để cập nhật tồn kho mới nhất trong dropdown
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("${_transactionType == 'inbound' ? 'Nhập' : 'Xuất'} kho thành công!"),
         backgroundColor: Colors.green,
       ));
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isTypeInbound = _transactionType == 'inbound';
+    final themeColor = isTypeInbound ? Colors.green : Colors.red;
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Chọn loại giao dịch
+          // 1. Selector Loại Giao Dịch (Modern Style)
           Container(
             padding: EdgeInsets.all(4),
             decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
             child: Row(
               children: [
-                Expanded(child: _buildTypeButton('inbound', 'NHẬP KHO', Icons.arrow_downward)),
-                Expanded(child: _buildTypeButton('outbound', 'XUẤT KHO', Icons.arrow_upward)),
+                Expanded(child: _buildTypeButton('inbound', 'NHẬP KHO', Icons.login)),
+                Expanded(child: _buildTypeButton('outbound', 'XUẤT KHO', Icons.logout)),
               ],
             ),
           ),
           SizedBox(height: 24),
 
-          // 2. Form nhập liệu
+          // 2. Form Card
           Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Thông tin phiếu ${_transactionType == 'inbound' ? 'nhập' : 'xuất'}",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange[800])),
-                  Divider(),
-                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(isTypeInbound ? Icons.add_circle : Icons.remove_circle, color: themeColor),
+                      SizedBox(width: 8),
+                      Text(
+                          isTypeInbound ? "Phiếu Nhập Hàng" : "Phiếu Xuất Hàng",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeColor)
+                      ),
+                    ],
+                  ),
+                  Divider(height: 30),
 
                   // Chọn sản phẩm
                   DropdownButtonFormField<Product>(
                     value: _selectedProduct,
                     decoration: InputDecoration(
-                        labelText: "Chọn sản phẩm",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.search)
+                      labelText: "Chọn sản phẩm",
+                      prefixIcon: Icon(Icons.search),
+                      helperText: _selectedProduct != null ? "Tồn kho hiện tại: ${_selectedProduct!.stockQuantity}" : null,
                     ),
                     isExpanded: true,
                     items: _availableProducts.map((p) => DropdownMenuItem(
                       value: p,
-                      child: Text("${p.name} (Tồn: ${p.stockQuantity})", overflow: TextOverflow.ellipsis),
+                      child: Text("${p.name}", overflow: TextOverflow.ellipsis),
                     )).toList(),
                     onChanged: (val) => setState(() => _selectedProduct = val),
                   ),
@@ -120,10 +146,8 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
                     controller: _qtyCtrl,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                        labelText: "Số lượng",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
-                        suffixText: "Đơn vị"
+                      labelText: "Số lượng",
+                      prefixIcon: Icon(Icons.numbers),
                     ),
                   ),
                   SizedBox(height: 16),
@@ -133,9 +157,8 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
                     controller: _noteCtrl,
                     maxLines: 2,
                     decoration: InputDecoration(
-                        labelText: "Ghi chú / Lý do",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.note)
+                      labelText: "Ghi chú / Lý do",
+                      prefixIcon: Icon(Icons.edit_note),
                     ),
                   ),
                   SizedBox(height: 24),
@@ -146,12 +169,14 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _transactionType == 'inbound' ? Colors.green : Colors.red,
+                        backgroundColor: themeColor,
                       ),
-                      onPressed: _submitTransaction,
-                      child: Text(
-                          _transactionType == 'inbound' ? "XÁC NHẬN NHẬP KHO" : "XÁC NHẬN XUẤT KHO",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+                      onPressed: isLoading ? null : _submitTransaction,
+                      child: isLoading
+                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : Text(
+                          "XÁC NHẬN ${isTypeInbound ? 'NHẬP' : 'XUẤT'}",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
                       ),
                     ),
                   )
@@ -166,6 +191,8 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
 
   Widget _buildTypeButton(String type, String label, IconData icon) {
     final isSelected = _transactionType == type;
+    final color = type == 'inbound' ? Colors.green : Colors.red;
+
     return GestureDetector(
       onTap: () => setState(() => _transactionType = type),
       child: Container(
@@ -178,7 +205,7 @@ class _StockTransactionTabState extends State<StockTransactionTab> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? (type == 'inbound' ? Colors.green : Colors.red) : Colors.grey),
+            Icon(icon, color: isSelected ? color : Colors.grey),
             SizedBox(width: 8),
             Text(label, style: TextStyle(
                 fontWeight: FontWeight.bold,
