@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../data/repository.dart'; // Đổi từ mock_data sang repository
-import '../../models/index.dart';    // Sử dụng index models
+import '../../data/repository.dart';
+import '../../models/index.dart';
 import '../login/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -9,14 +9,14 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Khởi tạo Controller rỗng trước
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _addrCtrl = TextEditingController();
 
   User? user;
   bool isEditing = false;
-  bool isLoading = true; // Thêm trạng thái loading
+  bool isLoading = true;
+  final Color primaryColor = Color(0xFF0F62FE);
 
   @override
   void initState() {
@@ -24,14 +24,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUser();
   }
 
-  // Hàm tải thông tin User từ bộ nhớ máy (thông qua Repository)
   void _loadUser() async {
     try {
       final u = await Repository().getCurrentUser();
       if (mounted) {
         setState(() {
           user = u;
-          // Fill dữ liệu vào Controller
           if (user != null) {
             _nameCtrl.text = user!.fullName;
             _phoneCtrl.text = user!.phone;
@@ -48,22 +46,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _saveProfile() async {
     if (user == null) return;
 
-    // Show loading hoặc disable nút khi đang lưu (tùy chọn)
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Đang cập nhật...")));
 
     try {
-      // 1. Gọi API update (Bạn cần đảm bảo Backend có API này và Repository đã implement)
-      // Nếu Repository chưa có logic API thật cho updateProfile, nó sẽ chạy logic giả lập hoặc lỗi
       await Repository().updateProfile({
         "full_name": _nameCtrl.text,
         "phone": _phoneCtrl.text,
         "address": _addrCtrl.text,
       });
 
-      // 2. Cập nhật thành công -> Update UI
       setState(() {
         isEditing = false;
-        // Cập nhật lại object User cục bộ để hiển thị ngay
         user = User(
             id: user!.id,
             fullName: _nameCtrl.text,
@@ -85,10 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _logout() async {
-    // Gọi logout từ Repository (xóa token)
     await Repository().logout();
-
-    // Chuyển về màn hình Login
     if (mounted) {
       Navigator.pushAndRemoveUntil(
           context,
@@ -98,12 +88,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.grey[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryColor, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. Màn hình Loading
-    if (isLoading) return Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (isLoading) return Scaffold(body: Center(child: CircularProgressIndicator(color: primaryColor)));
 
-    // 2. Màn hình Lỗi (nếu không lấy được user)
     if (user == null) return Scaffold(
         appBar: AppBar(title: Text("Lỗi")),
         body: Center(child: Column(
@@ -115,93 +125,152 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ))
     );
 
-    // 3. Màn hình chính
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text("Hồ sơ nhân viên"),
+        elevation: 0,
+        backgroundColor: primaryColor,
+        title: Text("Hồ sơ nhân viên", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
-          IconButton(onPressed: _logout, icon: Icon(Icons.logout, color: Colors.red))
+          IconButton(onPressed: _logout, icon: Icon(Icons.logout, color: Colors.white))
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: 30),
-            // Avatar
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.blue[50],
-              child: Text(
-                  user!.fullName.isNotEmpty ? user!.fullName[0].toUpperCase() : "?",
-                  style: TextStyle(fontSize: 40, color: Colors.blue, fontWeight: FontWeight.bold)
-              ),
-            ),
-            SizedBox(height: 16),
-            // Tên & Role
-            Text(user!.fullName, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            // Header Profile
             Container(
-              margin: EdgeInsets.only(top: 8),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(20)),
-              child: Text(
-                  user!.roleName.toUpperCase(),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)
+              width: double.infinity,
+              padding: EdgeInsets.only(bottom: 30),
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                    ),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                          user!.fullName.isNotEmpty ? user!.fullName[0].toUpperCase() : "?",
+                          style: TextStyle(fontSize: 40, color: primaryColor, fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(user!.fullName, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                        user!.roleName.toUpperCase(),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1)
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 40),
 
-            // Form thông tin
+            SizedBox(height: 24),
+
+            // Form Content
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("THÔNG TIN LIÊN HỆ", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1)),
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                      SizedBox(width: 8),
+                      Text("THÔNG TIN LIÊN HỆ", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1)),
+                    ],
+                  ),
                   SizedBox(height: 16),
 
-                  // Các trường thông tin
-                  // Email (Không cho sửa)
-                  Container(
-                    margin: EdgeInsets.only(bottom: 12),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
-                    child: Row(children: [SizedBox(width: 100, child: Text("Email", style: TextStyle(color: Colors.grey[600]))), Expanded(child: Text(user!.email, style: TextStyle(fontWeight: FontWeight.w500)))]),
-                  ),
+                  _buildInfoCard(Icons.email_outlined, "Email", user!.email, isEditable: false),
+                  SizedBox(height: 12),
 
-                  _buildProfileField("Họ tên", _nameCtrl, isEditing),
-                  _buildProfileField("Số điện thoại", _phoneCtrl, isEditing),
-                  _buildProfileField("Địa chỉ", _addrCtrl, isEditing),
+                  if (isEditing) ...[
+                    TextField(controller: _nameCtrl, decoration: _inputDecoration("Họ tên", Icons.person_outline)),
+                    SizedBox(height: 12),
+                    TextField(controller: _phoneCtrl, decoration: _inputDecoration("Số điện thoại", Icons.phone_outlined), keyboardType: TextInputType.phone),
+                    SizedBox(height: 12),
+                    TextField(controller: _addrCtrl, decoration: _inputDecoration("Địa chỉ", Icons.location_on_outlined)),
+                  ] else ...[
+                    _buildInfoCard(Icons.person_outline, "Họ tên", user!.fullName),
+                    SizedBox(height: 12),
+                    _buildInfoCard(Icons.phone_outlined, "Số điện thoại", user!.phone),
+                    SizedBox(height: 12),
+                    _buildInfoCard(Icons.location_on_outlined, "Địa chỉ", user!.address),
+                  ],
 
-                  SizedBox(height: 30),
+                  SizedBox(height: 32),
 
-                  // Nút bấm
+                  // Action Buttons
                   if (isEditing)
                     Row(
                       children: [
-                        Expanded(child: OutlinedButton(
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(color: Colors.grey[400]!),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
                             onPressed: () {
-                              // Reset lại dữ liệu nếu hủy
                               _nameCtrl.text = user!.fullName;
                               _phoneCtrl.text = user!.phone;
                               _addrCtrl.text = user!.address;
                               setState(() => isEditing = false);
                             },
-                            child: Text("Hủy")
-                        )),
+                            child: Text("Hủy", style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
+                          ),
+                        ),
                         SizedBox(width: 16),
-                        Expanded(child: ElevatedButton(onPressed: _saveProfile, child: Text("Lưu thay đổi"))),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 4,
+                            ),
+                            onPressed: _saveProfile,
+                            child: Text("Lưu thay đổi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          ),
+                        ),
                       ],
                     )
                   else
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                          onPressed: () => setState(() => isEditing = true),
-                          icon: Icon(Icons.edit_outlined),
-                          label: Text("Chỉnh sửa hồ sơ")
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: primaryColor,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: primaryColor.withOpacity(0.5))),
+                        ),
+                        onPressed: () => setState(() => isEditing = true),
+                        icon: Icon(Icons.edit_outlined),
+                        label: Text("Chỉnh sửa hồ sơ", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
+
+                  SizedBox(height: 40),
                 ],
               ),
             )
@@ -211,32 +280,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileField(String label, TextEditingController ctrl, bool enabled) {
-    if (!enabled) {
-      // Chế độ xem: Hiển thị như Text
-      return Container(
-        margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            SizedBox(width: 100, child: Text(label, style: TextStyle(color: Colors.grey[600]))),
-            Expanded(child: Text(ctrl.text, style: TextStyle(fontWeight: FontWeight.w500)))
-          ],
-        ),
-      );
-    } else {
-      // Chế độ sửa: Hiển thị TextField
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
-        child: TextField(
-          controller: ctrl,
-          decoration: InputDecoration(
-              labelText: label,
-              floatingLabelBehavior: FloatingLabelBehavior.always
+  Widget _buildInfoCard(IconData icon, String label, String value, {bool isEditable = true}) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isEditable ? primaryColor.withOpacity(0.1) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: isEditable ? primaryColor : Colors.grey[500], size: 22),
           ),
-        ),
-      );
-    }
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                SizedBox(height: 4),
+                Text(value.isNotEmpty ? value : "Chưa cập nhật", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[800])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

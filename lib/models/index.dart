@@ -8,3 +8,4 @@ export 'stock_transaction_model.dart';
 export 'contract_model.dart';
 export 'feedback_model.dart';
 export 'support_model.dart';
+export 'category_model.dart';

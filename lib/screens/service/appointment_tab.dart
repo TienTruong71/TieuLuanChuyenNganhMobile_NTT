@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../data/repository.dart'; // Sử dụng Repository
-import '../../models/index.dart';    // Sử dụng index models
+import '../../data/repository.dart';
+import '../../models/index.dart';
 
 class AppointmentTab extends StatefulWidget {
   @override
@@ -10,6 +10,9 @@ class AppointmentTab extends StatefulWidget {
 
 class _AppointmentTabState extends State<AppointmentTab> {
   late Future<List<Booking>> _bookingsFuture;
+  final List<String> _statuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'];
+  String? _selectedStatus;
+  final primaryColor = Color(0xFF0F62FE);
 
   @override
   void initState() {
@@ -17,16 +20,24 @@ class _AppointmentTabState extends State<AppointmentTab> {
     _loadData();
   }
 
-  // Tải dữ liệu
   void _loadData() {
     setState(() {
-      _bookingsFuture = Repository().getBookings();
+      _bookingsFuture = Repository().getBookings(status: _selectedStatus);
     });
   }
 
-  // Hàm xử lý cập nhật trạng thái (Duyệt / Từ chối)
+  String _getVietnameseStatus(String status) {
+    switch (status) {
+      case 'pending': return 'Chờ duyệt';
+      case 'confirmed': return 'Đã tiếp nhận';
+      case 'in_progress': return 'Đang xử lý';
+      case 'completed': return 'Hoàn thành';
+      case 'cancelled': return 'Đã hủy';
+      default: return status;
+    }
+  }
+
   void _updateStatus(String bookingId, String newStatus) async {
-    // Hiển thị thông báo đang xử lý
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Đang xử lý..."), duration: Duration(milliseconds: 800))
     );
@@ -34,10 +45,8 @@ class _AppointmentTabState extends State<AppointmentTab> {
     try {
       await Repository().updateBookingStatus(bookingId, newStatus);
 
-      // Kiểm tra xem màn hình còn hiển thị không trước khi update UI
       if (!mounted) return;
 
-      // Tải lại danh sách sau khi update thành công
       _loadData();
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -58,58 +67,78 @@ class _AppointmentTabState extends State<AppointmentTab> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async => _loadData(),
-      child: FutureBuilder<List<Booking>>(
-        future: _bookingsFuture,
-        builder: (context, snapshot) {
-          // 1. Trạng thái đang tải
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          // 2. Trạng thái lỗi
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 40),
-                  SizedBox(height: 10),
-                  Text("Lỗi tải dữ liệu", style: TextStyle(color: Colors.red)),
-                  TextButton(onPressed: _loadData, child: Text("Thử lại"))
-                ],
-              ),
-            );
-          }
-
-          final bookings = snapshot.data!;
-
-          // 3. Trạng thái danh sách trống
-          if (bookings.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey[300]),
-                  SizedBox(height: 16),
-                  Text("Chưa có lịch hẹn nào", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
-          }
-
-          // 4. Hiển thị danh sách
-          return ListView.separated(
-            padding: EdgeInsets.all(16),
-            itemCount: bookings.length,
-            separatorBuilder: (c, i) => SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final item = bookings[index];
-              return _buildBookingCard(item);
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70.0), // Tăng chiều cao để chứa padding tốt hơn
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+          child: DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: "Lọc theo trạng thái",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            value: _selectedStatus,
+            items: [
+              DropdownMenuItem(value: null, child: Text("Tất cả")),
+              ..._statuses.map((s) => DropdownMenuItem(value: s, child: Text(_getVietnameseStatus(s))))
+            ],
+            onChanged: (val) {
+              setState(() => _selectedStatus = val);
+              _loadData();
             },
-          );
-        },
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => _loadData(),
+        child: FutureBuilder<List<Booking>>(
+          future: _bookingsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 40),
+                    SizedBox(height: 10),
+                    Text("Lỗi tải dữ liệu: ${snapshot.error}", style: TextStyle(color: Colors.red)),
+                    TextButton(onPressed: _loadData, child: Text("Thử lại"))
+                  ],
+                ),
+              );
+            }
+
+            final bookings = snapshot.data!;
+
+            if (bookings.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey[300]),
+                    SizedBox(height: 16),
+                    Text("Chưa có lịch hẹn nào", style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.separated(
+              padding: EdgeInsets.all(16),
+              itemCount: bookings.length,
+              separatorBuilder: (c, i) => SizedBox(height: 16), // Tăng khoảng cách giữa các card
+              itemBuilder: (context, index) {
+                final item = bookings[index];
+                return _buildBookingCard(item);
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -127,6 +156,8 @@ class _AppointmentTabState extends State<AppointmentTab> {
     }
 
     return Card(
+      elevation: 4, // Tăng độ nổi bật
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -137,16 +168,16 @@ class _AppointmentTabState extends State<AppointmentTab> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                  SizedBox(width: 6),
+                  Icon(Icons.calendar_today, size: 18, color: primaryColor),
+                  SizedBox(width: 8),
                   Text(
-                      DateFormat('dd/MM - HH:mm').format(item.bookingDate),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)
+                      DateFormat('dd/MM/yyyy - HH:mm').format(item.bookingDate),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.grey[800])
                   ),
                 ]),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
                   child: Text(
                       statusText,
                       style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)
@@ -155,16 +186,16 @@ class _AppointmentTabState extends State<AppointmentTab> {
               ],
             ),
 
-            SizedBox(height: 12),
+            Divider(height: 24),
 
             // Thông tin Khách hàng & Dịch vụ
-            Text(item.userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(item.userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             SizedBox(height: 4),
             Text(item.serviceName, style: TextStyle(color: Colors.grey[700], fontSize: 14)),
 
             if(item.userPhone.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 4.0),
+                padding: const EdgeInsets.only(top: 8.0),
                 child: Row(children: [
                   Icon(Icons.phone, size: 14, color: Colors.grey),
                   SizedBox(width: 4),
@@ -174,7 +205,7 @@ class _AppointmentTabState extends State<AppointmentTab> {
 
             // Nút hành động (Chỉ hiện khi trạng thái là Pending)
             if (item.status == 'pending') ...[
-              Divider(height: 24, thickness: 0.5),
+              Divider(height: 28, thickness: 0.5),
               Row(
                 children: [
                   Expanded(
@@ -182,17 +213,22 @@ class _AppointmentTabState extends State<AppointmentTab> {
                       onPressed: () => _updateStatus(item.id, 'cancelled'),
                       style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
-                          side: BorderSide(color: Colors.red[200]!)
+                          side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                          padding: EdgeInsets.symmetric(vertical: 12)
                       ),
-                      child: Text("Từ chối"),
+                      child: Text("Từ chối", style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _updateStatus(item.id, 'confirmed'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F62FE)),
-                      child: Text("Xác nhận"),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12)
+                      ),
+                      child: Text("Xác nhận", style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

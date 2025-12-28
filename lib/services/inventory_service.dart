@@ -2,29 +2,15 @@ import '../models/index.dart';
 import 'api_config.dart';
 
 class InventoryService {
-  // Định nghĩa Endpoint theo cấu trúc backend
   static const String _inventoryUrl = '/staff/inventory';
   static const String _stockUrl = '/staff/stock';
-
-  // (Nếu bạn chưa có API lấy all products, tạm thời dùng endpoint này nếu có, hoặc để trống)
   static const String _productUrl = '/products';
-
-  // ---------------------------------------------------------------------------
-  // 1. INVENTORY (Quản lý kho)
-  // ---------------------------------------------------------------------------
+  static const String _categoryStaffUrl = '/staff/categories'; // Endpoint lấy danh mục cho Staff
 
   Future<List<Inventory>> getInventoryList() async {
-    // GET /api/staff/inventory
     final res = await ApiConfig.dio.get(_inventoryUrl);
 
-    // Backend trả về mảng trực tiếp: [...]
-    // Tuy nhiên, để an toàn ta vẫn check kiểu dữ liệu
-    List<dynamic> list = [];
-    if (res.data is List) {
-      list = res.data;
-    } else if (res.data is Map && res.data['data'] != null) {
-      list = res.data['data'];
-    }
+    List<dynamic> list = res.data is List ? res.data : [];
 
     return list.map((e) {
       try { return Inventory.fromJson(e); } catch (err) { return null; }
@@ -32,45 +18,49 @@ class InventoryService {
   }
 
   Future<void> addInventory(String productId, int quantity) async {
-    // POST /api/staff/inventory
     await ApiConfig.dio.post(_inventoryUrl, data: {
       "product_id": productId,
       "quantity_available": quantity
     });
   }
 
+  Future<void> addInventoryByName({
+    required String productName,
+    required String categoryName,
+    required int price,
+    required List<String> images,
+    required int quantityAvailable,
+  }) async {
+    await ApiConfig.dio.post('$_inventoryUrl/add-by-name', data: {
+      "product_name": productName,
+      "category_name": categoryName,
+      "price": price,
+      "images": images,
+      "quantity_available": quantityAvailable,
+    });
+  }
+
   Future<void> updateInventory(String invId, int quantity) async {
-    // PUT /api/staff/inventory/:id
     await ApiConfig.dio.put('$_inventoryUrl/$invId', data: {
       "quantity_available": quantity
     });
   }
 
   Future<void> deleteInventory(String invId) async {
-    // DELETE /api/staff/inventory/:id
     await ApiConfig.dio.delete('$_inventoryUrl/$invId');
   }
 
-  // ---------------------------------------------------------------------------
-  // 2. STOCK TRANSACTIONS (Nhập/Xuất kho)
-  // ---------------------------------------------------------------------------
-
-  Future<List<StockTransaction>> getTransactions() async {
-    // GET /api/staff/stock
+  Future<List<StockTransaction>> getStockTransactions() async {
     final res = await ApiConfig.dio.get(_stockUrl);
 
-    List<dynamic> list = [];
-    if (res.data is List) {
-      list = res.data;
-    }
+    List<dynamic> list = res.data is List ? res.data : [];
 
     return list.map((e) {
       try { return StockTransaction.fromJson(e); } catch (err) { return null; }
     }).whereType<StockTransaction>().toList();
   }
 
-  Future<void> createTransaction(String productId, int quantity, String type, String note) async {
-    // POST /api/staff/stock
+  Future<void> createStockTransaction(String productId, int quantity, String type, String note) async {
     await ApiConfig.dio.post(_stockUrl, data: {
       "product_id": productId,
       "quantity": quantity,
@@ -78,10 +68,6 @@ class InventoryService {
       "note": note
     });
   }
-
-  // ---------------------------------------------------------------------------
-  // 3. HELPER METHODS (Xử lý dữ liệu cho UI)
-  // ---------------------------------------------------------------------------
 
   Future<List<Product>> getProductsInInventory() async {
     final invList = await getInventoryList();
@@ -97,15 +83,24 @@ class InventoryService {
       List<dynamic> allProductsJson = (res.data is List) ? res.data : [];
       List<Product> allProducts = allProductsJson.map((e) => Product.fromJson(e)).toList();
 
-      // 2. Lấy danh sách đang có trong kho
       final invList = await getInventoryList();
       final existingProductIds = invList.map((i) => i.productId).toList();
 
-      // 3. Lọc ra những sp chưa có
       return allProducts.where((p) => !existingProductIds.contains(p.id)).toList();
     } catch (e) {
       print("Lỗi getProductsNotInInventory: $e");
-      return []; // Trả về rỗng nếu lỗi
+      return [];
     }
+  }
+
+  // HÀM MỚI
+  Future<List<Category>> getCategoriesList() async {
+    final res = await ApiConfig.dio.get(_categoryStaffUrl);
+
+    List<dynamic> list = res.data is List ? res.data : [];
+
+    return list.map((e) {
+      try { return Category.fromJson(e); } catch (err) { return null; }
+    }).whereType<Category>().toList();
   }
 }

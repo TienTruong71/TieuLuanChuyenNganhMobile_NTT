@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../data/repository.dart';
-import '../../../../models/feedback_model.dart'; // Import đúng model
+import '../../../../models/feedback_model.dart';
 
 class FeedbackTab extends StatefulWidget {
   @override
@@ -8,9 +8,9 @@ class FeedbackTab extends StatefulWidget {
 }
 
 class _FeedbackTabState extends State<FeedbackTab> {
-  // SỬA: Dùng FeedbackModel thay vì FeedbackItem
   List<FeedbackModel> feedbacks = [];
   bool isLoading = true;
+  final Color primaryColor = Color(0xFF00897B);
 
   @override
   void initState() {
@@ -54,95 +54,214 @@ class _FeedbackTabState extends State<FeedbackTab> {
     }
   }
 
-  // Helper để lấy tên hiển thị (Sản phẩm hoặc Dịch vụ)
   String _getTargetName(FeedbackModel item) {
     if (item.productName.isNotEmpty) return item.productName;
     if (item.serviceName.isNotEmpty) return item.serviceName;
     return "Sản phẩm chung";
   }
 
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending': return Colors.orange;
+      case 'approved': return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'pending': return 'Chờ duyệt';
+      case 'approved': return 'Đã duyệt';
+      default: return 'Đã xóa';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return Center(child: CircularProgressIndicator());
+    if (isLoading) return Center(child: CircularProgressIndicator(color: primaryColor));
 
     if (feedbacks.isEmpty) {
-      return Center(child: Text("Chưa có phản hồi nào", style: TextStyle(color: Colors.grey)));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat_bubble_outline, size: 60, color: Colors.grey[300]),
+            SizedBox(height: 16),
+            Text("Chưa có phản hồi nào", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(
+      color: primaryColor,
       onRefresh: () async => _loadData(),
       child: ListView.separated(
         padding: EdgeInsets.all(16),
         itemCount: feedbacks.length,
-        separatorBuilder: (c, i) => SizedBox(height: 12),
+        separatorBuilder: (c, i) => SizedBox(height: 16),
         itemBuilder: (context, index) {
           final item = feedbacks[index];
           final isPending = item.status == 'pending';
+          final statusColor = _getStatusColor(item.status);
 
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(8)),
-                      child: Row(children: List.generate(5, (i) => Icon(Icons.star_rounded, size: 16, color: i < item.rating ? Colors.amber : Colors.grey[300]))),
-                    ),
-                    _buildStatusChip(item.status),
-                  ]),
-                  SizedBox(height: 12),
-
-                  // SỬA: Logic hiển thị tên sản phẩm/dịch vụ
-                  Text(_getTargetName(item), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-
-                  SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.account_circle, size: 14, color: Colors.grey),
-                    SizedBox(width: 4),
-                    // SỬA: item.username (chữ thường)
-                    Text(item.username, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                  ]),
-                  SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text("\"${item.comment}\"", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[800])),
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                )
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.blueGrey[50],
+                        radius: 20,
+                        child: Text(
+                          item.username.isNotEmpty ? item.username[0].toUpperCase() : '?',
+                          style: TextStyle(color: Colors.blueGrey[700], fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.username,
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _getStatusText(item.status),
+                                    style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              children: List.generate(5, (i) => Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: i < item.rating ? Colors.amber : Colors.grey[300],
+                              )),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  if (isPending) ...[
-                    SizedBox(height: 16),
-                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                      TextButton(
-                          onPressed: () => _handleDelete(item.id),
-                          child: Text("Xóa", style: TextStyle(color: Colors.red))
+                ),
+
+                Divider(height: 1, color: Colors.grey[200]),
+
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.shopping_bag_outlined, size: 16, color: Colors.grey[600]),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _getTargetName(item),
+                              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800], fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
-                        onPressed: () => _handleApprove(item.id),
-                        child: Text("Duyệt đăng", style: TextStyle(fontSize: 13)),
+                      SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.format_quote_rounded, color: Colors.grey[400], size: 20),
+                            Text(
+                              item.comment,
+                              style: TextStyle(color: Colors.grey[800], height: 1.4),
+                            ),
+                          ],
+                        ),
                       ),
-                    ])
-                  ]
+                    ],
+                  ),
+                ),
+
+                if (isPending) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _handleDelete(item.id),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: Text("Từ chối"),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _handleApprove(item.id),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                            ),
+                            child: Text("Duyệt đăng"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 ],
-              ),
+              ],
             ),
           );
         },
       ),
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color color = status == 'pending' ? Colors.orange : (status == 'approved' ? Colors.green : Colors.red);
-    String text = status == 'pending' ? 'Chờ duyệt' : (status == 'approved' ? 'Đã duyệt' : 'Đã xóa');
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(border: Border.all(color: color.withOpacity(0.3)), borderRadius: BorderRadius.circular(4)),
-      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 }
