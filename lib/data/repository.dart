@@ -65,6 +65,16 @@ class Repository {
   Future<Contract> createContract(Map<String, dynamic> contractData) {
     return _saleService.createContract(contractData);
   }
+// Lấy order chưa có hợp đồng
+Future<List<Map<String, dynamic>>> getOrdersNoContract() {
+  return _saleService.getOrdersNoContract();
+}
+
+// Tạo hợp đồng từ order
+Future<Contract> createContractFromOrder(String orderId) {
+  return _saleService.createContractFromOrder(orderId);
+}
+
 
   // Hàm tải file PDF hợp đồng
   Future<void> downloadContract(String id, String savePath) => _saleService.downloadContract(id, savePath);
