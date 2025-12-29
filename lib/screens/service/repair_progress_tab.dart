@@ -45,6 +45,12 @@ class _RepairProgressTabState extends State<RepairProgressTab> {
     String _status = item.status;
     DateTime? _selectedDate = item.estimatedCompletion;
 
+    // Safety check for status value to prevent Dropdown crash
+    final validStatuses = ['in_progress', 'waiting_parts', 'testing', 'completed'];
+    if (!validStatuses.contains(_status)) {
+      _status = validStatuses.contains(item.status) ? item.status : 'in_progress';
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -92,7 +98,7 @@ class _RepairProgressTabState extends State<RepairProgressTab> {
                           context: context,
                           initialDate: _selectedDate ?? DateTime.now(),
                           firstDate: DateTime.now(),
-                          lastDate: DateTime(2025)
+                          lastDate: DateTime(2030) // Extend to 2030
                       );
                       if (date != null) {
                         final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
@@ -309,7 +315,7 @@ class _RepairProgressTabState extends State<RepairProgressTab> {
                         ),
 
                       // --- ACTION BUTTON ---
-                      if (isMyTask)
+                      if (isMyTask && item.status != 'completed' && item.status != 'cancelled') // Hide button if completed/cancelled
                         SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(

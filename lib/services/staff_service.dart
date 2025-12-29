@@ -15,6 +15,7 @@ class StaffService {
     String? search,
     DateTime? startDate,
     DateTime? endDate,
+    DateTime? singleDate, // Thêm tham số lọc theo ngày đơn lẻ
     int page = 1,
     int limit = 10,
   }) async {
@@ -25,6 +26,7 @@ class StaffService {
       if (search != null && search.isNotEmpty) 'search': search,
       if (startDate != null) 'startDate': startDate.toIso8601String(),
       if (endDate != null) 'endDate': endDate.toIso8601String(),
+      if (singleDate != null) 'date': singleDate.toIso8601String().split('T')[0], // YYYY-MM-DD
     };
 
     // API GET /api/staff/service/appointments

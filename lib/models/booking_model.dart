@@ -6,6 +6,7 @@ class Booking {
   final String serviceId;
   final String serviceName;
   final DateTime bookingDate;
+  final String timeSlot;
   final String status; // pending, confirmed, in_progress, completed, cancelled
 
   Booking({
@@ -16,6 +17,7 @@ class Booking {
     required this.serviceId,
     required this.serviceName,
     required this.bookingDate,
+    required this.timeSlot,
     required this.status,
   });
 
@@ -32,6 +34,7 @@ class Booking {
       serviceId: serviceObj['_id'] ?? (json['service_id'] is String ? json['service_id'] : ''),
       serviceName: serviceObj['service_name'] ?? 'Unknown Service',
       bookingDate: DateTime.tryParse(json['booking_date'] ?? '') ?? DateTime.now(),
+      timeSlot: json['time_slot'] ?? '',
       status: json['status'] ?? 'pending',
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/repository.dart';
 import '../../../../models/support_model.dart';
+import 'support_chat_screen.dart';
 
 class SupportTab extends StatefulWidget {
   @override
@@ -11,7 +12,7 @@ class SupportTab extends StatefulWidget {
 class _SupportTabState extends State<SupportTab> {
   List<SupportRequest> requests = [];
   bool isLoading = true;
-  final Color primaryColor = Color(0xFF00897B); // Teal color for Support
+  final Color primaryColor = Color(0xFF00897B);
 
   @override
   void initState() {
@@ -35,101 +36,12 @@ class _SupportTabState extends State<SupportTab> {
     }
   }
 
-  void _showReplyDialog(SupportRequest item) {
-    final _replyCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.reply_rounded, color: primaryColor),
-            SizedBox(width: 8),
-            Text("Phản hồi khách hàng", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Câu hỏi từ ${item.username}:", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blueGrey[100]!),
-                ),
-                child: Text(
-                  item.message,
-                  style: TextStyle(color: Colors.blueGrey[900], fontStyle: FontStyle.italic),
-                ),
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _replyCtrl,
-                decoration: InputDecoration(
-                  labelText: "Nội dung trả lời",
-                  hintText: "Nhập câu trả lời chi tiết...",
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: primaryColor, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                maxLines: 5,
-              ),
-            ],
-          ),
-        ),
-        actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text("Hủy", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              if (_replyCtrl.text.isEmpty) return;
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Đang gửi phản hồi...")));
-
-              try {
-                await Repository().replySupport(item.id, _replyCtrl.text);
-                _loadData();
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Đã gửi phản hồi thành công!"), backgroundColor: Colors.green));
-              } catch (e) {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            icon: Icon(Icons.send_rounded, size: 18, color: Colors.white),
-            label: Text("Gửi đi", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          )
-        ],
-      ),
+  void _openChat(SupportRequest item) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => SupportChatScreen(request: item)),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    return status == 'resolved' ? Colors.green : Colors.orange;
-  }
-
-  String _getStatusText(String status) {
-    return status == 'resolved' ? 'Đã xử lý' : 'Chờ xử lý';
+    _loadData(); // Refresh list on return to update snippets/times
   }
 
   @override
@@ -141,9 +53,9 @@ class _SupportTabState extends State<SupportTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.support_agent_rounded, size: 60, color: Colors.grey[300]),
+            Icon(Icons.chat_bubble_outline, size: 60, color: Colors.grey[300]),
             SizedBox(height: 16),
-            Text("Không có yêu cầu hỗ trợ nào", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            Text("Không có tin nhắn hỗ trợ nào", style: TextStyle(color: Colors.grey, fontSize: 16)),
           ],
         ),
       );
@@ -153,151 +65,107 @@ class _SupportTabState extends State<SupportTab> {
       color: primaryColor,
       onRefresh: () async => _loadData(),
       child: ListView.separated(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         itemCount: requests.length,
-        separatorBuilder: (c, i) => SizedBox(height: 16),
+        separatorBuilder: (c, i) => Divider(height: 1),
         itemBuilder: (context, index) {
           final item = requests[index];
-          final isResolved = item.status == 'resolved';
-          final statusColor = _getStatusColor(item.status);
+          // Determine last message to show in preview
+          String lastMsg = item.message;
+          DateTime lastTime = item.createdAt;
+          bool isMeLast = false;
 
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                )
+          if (item.messages.isNotEmpty) {
+            final last = item.messages.last;
+            lastMsg = last.text;
+            lastTime = last.timestamp;
+            isMeLast = last.senderRole == 'staff' || last.senderRole == 'admin';
+          }
+
+          final timeStr = _formatTime(lastTime);
+
+          return ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            onTap: () => _openChat(item),
+            leading: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.blueGrey[50],
+                  child: Text(
+                    item.username.isNotEmpty ? item.username[0].toUpperCase() : "?",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor),
+                  ),
+                ),
+                if (item.status != 'resolved')
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  )
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            title: Text(
+              item.username,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Row(
+                children: [
+                  if (isMeLast) 
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4.0),
+                      child: Text("Bạn:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  Expanded(
+                    child: Text(
+                      lastMsg,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isMeLast ? Colors.grey : Colors.black87,
+                        fontWeight: isMeLast ? FontWeight.normal : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Header: User Info & Status
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.blue[50],
-                            child: Text(
-                              item.username.isNotEmpty ? item.username[0].toUpperCase() : "?",
-                              style: TextStyle(fontSize: 16, color: Colors.blue[800], fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.username, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              SizedBox(height: 2),
-                              Text(
-                                DateFormat('HH:mm - dd/MM/yyyy').format(item.createdAt),
-                                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: statusColor.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(isResolved ? Icons.check_circle : Icons.access_time_filled, size: 14, color: statusColor),
-                            SizedBox(width: 4),
-                            Text(
-                              _getStatusText(item.status),
-                              style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Divider(height: 1, color: Colors.grey[200]),
-
-                // Body: Message
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.message,
-                        style: TextStyle(fontSize: 15, color: Colors.black87, height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Footer: Reply Section
-                if (isResolved)
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.subdirectory_arrow_right, size: 18, color: Colors.green[700]),
-                            SizedBox(width: 8),
-                            Text("Phản hồi từ nhân viên:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green[800])),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 26.0),
-                          child: Text(
-                            item.reply,
-                            style: TextStyle(color: Colors.green[900], fontSize: 14, height: 1.3),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showReplyDialog(item),
-                        icon: Icon(Icons.reply, size: 18),
-                        label: Text("Gửi trả lời"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  )
+                Text(timeStr, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                SizedBox(height: 4),
+                if (item.status == 'resolved')
+                  Icon(Icons.check_circle, size: 14, color: Colors.grey)
               ],
             ),
           );
         },
       ),
     );
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final diff = now.difference(time);
+
+    if (diff.inDays < 1) {
+      return DateFormat('HH:mm').format(time);
+    } else if (diff.inDays < 7) {
+      return DateFormat('EEE').format(time); // Mon, Tue...
+    } else {
+      return DateFormat('dd/MM').format(time);
+    }
   }
 }

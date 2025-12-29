@@ -13,7 +13,17 @@ class SaleService {
   // ================= FEEDBACK =================
   Future<List<FeedbackModel>> getFeedbacks() async {
     final res = await ApiConfig.dio.get(_feedbackUrl);
-    final list = res.data['data'] ?? res.data;
+    
+    // Fix: Handle both List and Map response structure
+    dynamic list;
+    if (res.data is Map && res.data['data'] != null) {
+      list = res.data['data'];
+    } else {
+      list = res.data;
+    }
+
+    if (list is! List) return [];
+
     return List.from(list).map((e) => FeedbackModel.fromJson(e)).toList();
   }
 
@@ -28,16 +38,37 @@ class SaleService {
   // ================= SUPPORT =================
   Future<List<SupportRequest>> getSupportRequests() async {
     final res = await ApiConfig.dio.get(_supportUrl);
-    final list = res.data['data'] ?? res.data;
-    return List.from(list)
-        .map((e) => SupportRequest.fromJson(e))
-        .toList();
+    // Backend returns { supportRequests: [...], pagination: {...} }
+    final data = res.data;
+    List<dynamic> list = [];
+
+    if (data is Map && data.containsKey('supportRequests')) {
+      list = data['supportRequests'];
+    } else if (data is List) {
+      list = data;
+    } else if (data['data'] != null) {
+      list = data['data'];
+    }
+
+    return list.map((e) => SupportRequest.fromJson(e)).toList();
+  }
+
+  Future<SupportRequest> getSupportRequestById(String id) async {
+    final res = await ApiConfig.dio.get('$_supportUrl/$id');
+    return SupportRequest.fromJson(res.data);
   }
 
   Future<void> replySupport(String id, String message) async {
     await ApiConfig.dio.put(
       '$_supportUrl/$id/reply',
-      data: {"replyMessage": message},
+      data: {"text": message},
+    );
+  }
+
+  Future<void> resolveSupport(String id) async {
+    await ApiConfig.dio.put(
+      '$_supportUrl/$id/reply',
+      data: {"status": "resolved"},
     );
   }
 
@@ -56,7 +87,7 @@ class SaleService {
   // ================= ORDER - NO CONTRACT =================
   /// Lấy danh sách order chưa có hợp đồng
   Future<List<Map<String, dynamic>>> getOrdersNoContract() async {
-    final res = await ApiConfig.dio.get('/staff/sale/orders/no-contract');
+    final res = await ApiConfig.dio.get('/staff/sale/contracts/pending-orders');
     final list = res.data['data'] ?? res.data;
     return List<Map<String, dynamic>>.from(list);
   }

@@ -30,7 +30,7 @@ class FeedbackModel {
     String pName = '';
     if (json['product_id'] != null) {
       if (json['product_id'] is Map) {
-        pName = json['product_id']['name'] ?? '';
+        pName = json['product_id']['product_name'] ?? '';
       } else {
         pName = "Sản phẩm #${json['product_id'].toString().substring(0, 4)}";
       }
@@ -40,7 +40,7 @@ class FeedbackModel {
     String sName = '';
     if (json['service_id'] != null) {
       if (json['service_id'] is Map) {
-        sName = json['service_id']['name'] ?? '';
+        sName = json['service_id']['service_name'] ?? '';
       } else {
         sName = "Dịch vụ #${json['service_id'].toString().substring(0, 4)}";
       }

@@ -61,7 +61,9 @@ class Repository {
   Future<void> deleteFeedback(String id) => _saleService.deleteFeedback(id);
 
   Future<List<SupportRequest>> getSupportRequests() => _saleService.getSupportRequests();
+  Future<SupportRequest> getSupportRequestById(String id) => _saleService.getSupportRequestById(id);
   Future<void> replySupport(String id, String msg) => _saleService.replySupport(id, msg);
+  Future<void> resolveSupport(String id) => _saleService.resolveSupport(id);
 
   Future<List<Contract>> getContracts() => _saleService.getContracts();
   Future<Contract> createContract(Map<String, dynamic> contractData) {
@@ -86,8 +88,8 @@ Future<Contract> createContractFromOrder(String orderId) {
   // ---------------------------------------------------------------------------
 
   // --- Appointments / Bookings ---
-  Future<List<Booking>> getBookings({String? status, String? search}) =>
-      _staffService.getBookings(status: status, search: search);
+  Future<List<Booking>> getBookings({String? status, String? search, DateTime? singleDate}) =>
+      _staffService.getBookings(status: status, search: search, singleDate: singleDate);
   Future<Booking> updateBookingStatus(String id, String status) => _staffService.updateBookingStatus(id, status);
 
   // --- Service Bays ---

@@ -4,8 +4,9 @@ class SupportRequest {
   final String email;
   final String message;
   final String status;
-  final String reply; // Backend không trả về trong schema nhưng controller có lưu
+  final String reply;
   final DateTime createdAt;
+  final List<SupportMessage> messages;
 
   SupportRequest({
     required this.id,
@@ -15,6 +16,7 @@ class SupportRequest {
     required this.status,
     this.reply = '',
     required this.createdAt,
+    this.messages = const [],
   });
 
   factory SupportRequest.fromJson(Map<String, dynamic> json) {
@@ -27,15 +29,60 @@ class SupportRequest {
       uEmail = json['user']['email'] ?? '';
     }
 
+    String replyText = json['reply'] ?? '';
+    List<SupportMessage> parsedMessages = [];
+
+    if (json['messages'] is List) {
+      parsedMessages = (json['messages'] as List)
+          .map((m) => SupportMessage.fromJson(m))
+          .toList();
+    }
+    
+    if (replyText.isEmpty && parsedMessages.isNotEmpty) {
+      final staffMsg = parsedMessages.lastWhere(
+        (m) => m.senderRole == 'staff' || m.senderRole == 'admin',
+        orElse: () => SupportMessage(senderRole: '', text: '', timestamp: DateTime.now()),
+      );
+      if (staffMsg.senderRole.isNotEmpty) {
+        replyText = staffMsg.text;
+      }
+    }
+
     return SupportRequest(
       id: json['_id'] ?? '',
       username: uName,
       email: uEmail,
       message: json['message'] ?? '',
       status: json['status'] ?? 'pending',
-      reply: json['reply'] ?? '',
+      reply: replyText,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      messages: parsedMessages,
+    );
+  }
+}
+
+class SupportMessage {
+  final String senderRole;
+  final String senderName;
+  final String text;
+  final DateTime timestamp;
+
+  SupportMessage({
+    required this.senderRole,
+    this.senderName = '',
+    required this.text,
+    required this.timestamp,
+  });
+
+  factory SupportMessage.fromJson(Map<String, dynamic> json) {
+    return SupportMessage(
+      senderRole: json['senderRole'] ?? 'customer',
+      senderName: json['senderName'] ?? '',
+      text: json['text'] ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'])
           : DateTime.now(),
     );
   }
