@@ -56,16 +56,21 @@ class _AppointmentTabState extends State<AppointmentTab> {
     }
   }
 
-  void _updateStatus(String bookingId, String newStatus) async {
+  void _updateStatus(String bookingId, String newStatus, {String? note}) async {
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Đang xử lý..."), duration: Duration(milliseconds: 800))
     );
 
     try {
-      await Repository().updateBookingStatus(bookingId, newStatus);
+      await Repository().updateBookingStatus(bookingId, newStatus, note: note);
       if (!mounted) return;
       _loadData();
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (newStatus == 'cancelled') {
+        _showSuccess("Đã hủy và tạo thông báo cho khách hàng");
+      } else if (newStatus == 'confirmed') {
+        _showSuccess("Đã xác nhận và tạo thông báo cho khách hàng");
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -73,6 +78,48 @@ class _AppointmentTabState extends State<AppointmentTab> {
           SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red)
       );
     }
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.green)
+    );
+  }
+
+  void _showCancelDialog(String bookingId) {
+    final _reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Từ chối lịch hẹn"),
+        content: TextField(
+          controller: _reasonController,
+          decoration: InputDecoration(
+            hintText: "Nhập lý do từ chối...",
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text("Quay lại", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Vui lòng nhập lý do!")));
+                return;
+              }
+              Navigator.pop(ctx);
+              _updateStatus(bookingId, 'cancelled', note: _reasonController.text.trim());
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text("Xác nhận hủy", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -262,7 +309,7 @@ class _AppointmentTabState extends State<AppointmentTab> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                       onPressed: () => _updateStatus(item.id, 'cancelled'),
+                       onPressed: () => _showCancelDialog(item.id),
                        child: Text("Từ chối"),
                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red)
                     )

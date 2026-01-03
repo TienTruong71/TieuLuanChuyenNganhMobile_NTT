@@ -3,12 +3,44 @@ import 'package:dio/dio.dart';
 import '../models/contract_model.dart';
 import '../models/feedback_model.dart';
 import '../models/support_model.dart';
+import '../models/booking_model.dart';
 import 'api_config.dart';
 
 class SaleService {
   static const String _contractUrl = '/staff/sale/contracts';
   static const String _feedbackUrl = '/staff/sale/feedbacks';
   static const String _supportUrl = '/staff/sale/support';
+  static const String _appointmentUrl = '/staff/sale/appointments';
+
+  // ================= APPOINTMENT (TEST DRIVE) =================
+  Future<List<Booking>> getTestDriveBookings({String status = '', String? date}) async {
+    final query = <String, dynamic>{};
+    if (status.isNotEmpty) query['status'] = status;
+    if (date != null && date.isNotEmpty) query['date'] = date;
+
+    final res = await ApiConfig.dio.get(_appointmentUrl, queryParameters: query);
+    
+    final data = res.data;
+    List<dynamic> list = [];
+
+    if (data is Map && data.containsKey('appointments')) {
+      list = data['appointments'];
+    } else if (data['data'] != null) {
+      list = data['data'];
+    } else {
+        // Fallback or empty
+    }
+
+    return list.map((e) => Booking.fromJson(e)).toList();
+  }
+
+  Future<void> updateTestDriveStatus(String id, String status, {String? note}) async {
+    final data = {'status': status};
+    if (note != null && note.isNotEmpty) {
+      data['note'] = note;
+    }
+    await ApiConfig.dio.put('$_appointmentUrl/$id', data: data);
+  }
 
   // ================= FEEDBACK =================
   Future<List<FeedbackModel>> getFeedbacks() async {

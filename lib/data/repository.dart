@@ -82,6 +82,10 @@ Future<Contract> createContractFromOrder(String orderId) {
 
   Future<void> downloadContract(String id, String savePath) => _saleService.downloadContract(id, savePath);
 
+  Future<List<Booking>> getTestDriveBookings({String status = '', String? date}) => 
+      _saleService.getTestDriveBookings(status: status, date: date);
+  Future<void> updateTestDriveStatus(String id, String status, {String? note}) => _saleService.updateTestDriveStatus(id, status, note: note);
+
 
   // ---------------------------------------------------------------------------
   // 4. SERVICE STAFF (Dịch vụ) - CẬP NHẬT FULL
@@ -90,7 +94,8 @@ Future<Contract> createContractFromOrder(String orderId) {
   // --- Appointments / Bookings ---
   Future<List<Booking>> getBookings({String? status, String? search, DateTime? singleDate}) =>
       _staffService.getBookings(status: status, search: search, singleDate: singleDate);
-  Future<Booking> updateBookingStatus(String id, String status) => _staffService.updateBookingStatus(id, status);
+  Future<Booking> updateBookingStatus(String id, String status, {String? note}) => 
+      _staffService.updateBookingStatus(id, status, note: note);
 
   // --- Service Bays ---
   Future<List<ServiceBay>> getServiceBays({String? status}) => _staffService.getServiceBays(status: status);

@@ -43,11 +43,13 @@ class StaffService {
     }).whereType<Booking>().toList();
   }
 
-  Future<Booking> updateBookingStatus(String id, String status) async {
+  Future<Booking> updateBookingStatus(String id, String status, {String? note}) async {
     // API PUT /api/staff/service/appointments/:id
-    final res = await ApiConfig.dio.put('$_appointmentUrl/$id', data: {
-      'status': status
-    });
+    final Map<String, dynamic> data = {'status': status};
+    if (note != null && note.isNotEmpty) {
+      data['note'] = note;
+    }
+    final res = await ApiConfig.dio.put('$_appointmentUrl/$id', data: data);
     return Booking.fromJson(res.data['appointment']);
   }
 
