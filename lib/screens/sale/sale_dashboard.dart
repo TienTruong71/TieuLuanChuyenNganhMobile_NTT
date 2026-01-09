@@ -12,8 +12,9 @@ class SaleDashboard extends StatefulWidget {
 
 class _SaleDashboardState extends State<SaleDashboard> {
   int _currentIndex = 0;
-  final List<Widget> _tabs = [ContractTab(), TestDriveTab(), FeedbackTab(), SupportTab()];
-  final List<String> _titles = ["Quản Lý Hợp Đồng", "Lịch Lái Thử", "Phản Hồi Khách Hàng", "Hỗ Trợ & Tư Vấn"];
+
+  List<Widget> get _tabs => [TestDriveTab(), FeedbackTab(), SupportTab()];
+  List<String> get _titles => ["Lịch Lái Thử", "Phản Hồi Khách Hàng", "Hỗ Trợ & Tư Vấn"];
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,6 @@ class _SaleDashboardState extends State<SaleDashboard> {
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
         indicatorColor: Colors.green[100],
         destinations: [
-          NavigationDestination(icon: Icon(Icons.description_outlined), selectedIcon: Icon(Icons.description, color: Colors.green[800]), label: "Hợp đồng"),
           NavigationDestination(icon: Icon(Icons.drive_eta_outlined), selectedIcon: Icon(Icons.drive_eta, color: Colors.green[800]), label: "Lái thử"),
           NavigationDestination(icon: Icon(Icons.star_outline), selectedIcon: Icon(Icons.star, color: Colors.green[800]), label: "Feedback"),
           NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent, color: Colors.green[800]), label: "Hỗ trợ"),
